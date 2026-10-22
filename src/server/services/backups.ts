@@ -33,6 +33,10 @@ export type DependenciasBackup = {
 
 export type ResultadoBackup = { tipo: "criado"; objeto: string } | { tipo: "nao_devido" };
 
+export function selecionarBackupParaDownload(backup: ExecucaoBackup, ownerId: string) {
+  return backup.ownerId === ownerId ? backup : null;
+}
+
 export function autorizarCron(cabecalho: string | null, segredo: string | undefined) {
   if (!segredo || !cabecalho) return false;
   const esperado = Buffer.from(`Bearer ${segredo}`);
