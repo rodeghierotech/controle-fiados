@@ -32,7 +32,9 @@ async function clientesComSaldo(db: Db, ownerId: string): Promise<LinhaCliente[]
   return linhas.map((linha) => ({
     ...linha,
     saldoCentavos: linha.saldoCentavos ?? 0,
-    ultimaMovimentacaoEm: linha.ultimaMovimentacaoEm?.toISOString() ?? null,
+    ultimaMovimentacaoEm: linha.ultimaMovimentacaoEm
+      ? (linha.ultimaMovimentacaoEm instanceof Date ? linha.ultimaMovimentacaoEm : new Date(linha.ultimaMovimentacaoEm)).toISOString()
+      : null,
   }));
 }
 
