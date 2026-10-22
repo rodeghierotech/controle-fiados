@@ -28,6 +28,32 @@ interface Resultado {
   repetida: boolean;
 }
 
+interface CompraRegistrada {
+  id: number;
+  descricao: string | null;
+  valorCentavos: number;
+  registradoEm: string;
+}
+
+function ComprasRegistradas({ compras, carregando }: { compras: CompraRegistrada[]; carregando: boolean }) {
+  if (carregando) return <p className="text-sm text-muted-foreground">Consultando compras registradas...</p>;
+  if (compras.length === 0) return null;
+
+  return (
+    <section aria-label="Compras registradas" className="space-y-2">
+      <p className="text-sm font-medium">Compras registradas</p>
+      <div className="max-h-52 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
+        {compras.map((compra) => (
+          <div key={compra.id} className="flex items-start justify-between gap-3 text-sm">
+            <p className="whitespace-pre-line break-words">{compra.descricao || "Compra sem descrição"}</p>
+            <span className="tabular shrink-0 font-medium">{formatMoney(compra.valorCentavos)}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: Props) {
   const router = useRouter();
   const op = useOperacao();
@@ -37,6 +63,7 @@ export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: 
   const [erroValor, setErroValor] = useState<string | null>(null);
   const [saldoEmAberto, setSaldoEmAberto] = useState<number | null>(null);
   const [carregandoSaldoEmAberto, setCarregandoSaldoEmAberto] = useState(false);
+  const [compras, setCompras] = useState<CompraRegistrada[]>([]);
   const [saldoOriginal, setSaldoOriginal] = useState<number | null>(null);
   const [consultandoSaldo, setConsultandoSaldo] = useState(false);
   const [revisar, setRevisar] = useState(false);
@@ -51,6 +78,7 @@ export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: 
     setResultado(null);
     setSaldoEmAberto(null);
     setCarregandoSaldoEmAberto(false);
+    setCompras([]);
     setSaldoOriginal(null);
     setErroCliente(null);
     setErroValor(null);
@@ -62,6 +90,7 @@ export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: 
     if (!aberto || !cliente || cliente.tipo !== "existente") {
       setSaldoEmAberto(null);
       setCarregandoSaldoEmAberto(false);
+      setCompras([]);
       return;
     }
 
@@ -69,13 +98,16 @@ export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: 
     setSaldoEmAberto(null);
     setCarregandoSaldoEmAberto(true);
 
-    void obter<{ itens: Sugestao[] }>(`/api/clientes?q=${encodeURIComponent(cliente.nome)}`)
+    void obter<{ saldoCentavos: number; compras: CompraRegistrada[] }>(`/api/clientes/${cliente.id}/compras`)
       .then((resposta) => {
-        const clienteAtual = resposta.itens.find((item) => item.id === cliente.id);
-        if (ativo) setSaldoEmAberto(clienteAtual?.saldoCentavos ?? null);
+        if (!ativo) return;
+        setSaldoEmAberto(resposta.saldoCentavos);
+        setCompras(resposta.compras);
       })
       .catch(() => {
-        if (ativo) setSaldoEmAberto(null);
+        if (!ativo) return;
+        setSaldoEmAberto(null);
+        setCompras([]);
       })
       .finally(() => {
         if (ativo) setCarregandoSaldoEmAberto(false);
@@ -156,19 +188,23 @@ export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: 
                   onChange={(c) => {
                     setCliente(c);
                     setSaldoEmAberto(null);
+                    setCompras([]);
                     setErroCliente(null);
                   }}
                   permitirNovo={false}
                 />
               )}
               {cliente?.tipo === "existente" && (
-                <p className="mt-2 text-sm text-muted-foreground" aria-live="polite">
-                  {carregandoSaldoEmAberto ? (
-                    "Consultando valor em aberto..."
-                  ) : saldoEmAberto !== null ? (
-                    <>Cliente deve: <strong className="tabular text-foreground">{formatMoney(saldoEmAberto)}</strong></>
-                  ) : null}
-                </p>
+                <div className="mt-2 space-y-3" aria-live="polite">
+                  <p className="text-sm text-muted-foreground">
+                    {carregandoSaldoEmAberto ? (
+                      "Consultando valor em aberto..."
+                    ) : saldoEmAberto !== null ? (
+                      <>Cliente deve: <strong className="tabular text-foreground">{formatMoney(saldoEmAberto)}</strong></>
+                    ) : null}
+                  </p>
+                  <ComprasRegistradas compras={compras} carregando={carregandoSaldoEmAberto} />
+                </div>
               )}
               <ErroCampo msg={erroCliente} />
             </div>
@@ -200,6 +236,7 @@ export function PagamentoDialog({ aberto, onAbertoChange, clientePredefinido }: 
               </div>
               <Linha rotulo="Data e hora"><span className="text-base font-semibold">{dataHoje()}</span></Linha>
             </dl>
+            <ComprasRegistradas compras={compras} carregando={carregandoSaldoEmAberto} />
             <AlertaErro msg={op.erro} />
             <DialogFooter>
               <Button variant="outline" onClick={() => setRevisar(false)}>Voltar</Button>

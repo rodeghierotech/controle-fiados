@@ -48,6 +48,24 @@ export function parseMoney(input: string): ParseMoneyResult {
   return { ok: true, centavos };
 }
 
+/** Converte um valor único ou a soma de valores em centavos, sem ponto flutuante. */
+export function parseMoneySum(input: string): ParseMoneyResult {
+  const parcelas = (input ?? "").split("+");
+  if (parcelas.length === 1) return parseMoney(input);
+
+  let centavos = 0;
+  for (const parcela of parcelas) {
+    const valor = parseMoney(parcela.trim());
+    if (!valor.ok) return valor;
+    centavos += valor.centavos;
+    if (!Number.isSafeInteger(centavos) || centavos > VALOR_MAXIMO_CENTAVOS) {
+      return { ok: false, error: "Valor acima do limite permitido." };
+    }
+  }
+
+  return { ok: true, centavos };
+}
+
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 /** Formata centavos inteiros como moeda brasileira, sem passar por ponto flutuante na aritmética. */

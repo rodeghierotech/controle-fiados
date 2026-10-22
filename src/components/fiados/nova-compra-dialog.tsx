@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatMoney, parseMoney } from "@/lib/money";
+import { Textarea } from "@/components/ui/textarea";
+import { formatMoney, parseMoneySum } from "@/lib/money";
 import { ClienteCombobox, type ClienteEscolhido } from "./cliente-combobox";
 import { imprimirComprovante, prepararComprovante } from "./comprovante";
 import { AlertaErro, ErroCampo, Linha, Sucesso, dataHoje, useOperacao } from "./comum";
@@ -19,7 +20,7 @@ import { AlertaErro, ErroCampo, Linha, Sucesso, dataHoje, useOperacao } from "./
 const schema = z.object({
   descricao: z.string().trim().min(1, "Informe a descrição.").max(200, "Use no máximo 200 caracteres."),
   valor: z.string().superRefine((v, ctx) => {
-    const r = parseMoney(v);
+    const r = parseMoneySum(v);
     if (!r.ok) ctx.addIssue({ code: "custom", message: r.error });
   }),
 });
@@ -57,7 +58,7 @@ export function NovaCompraDialog({ aberto, onAbertoChange, clientePredefinido }:
 
   const form = useForm<Valores>({ resolver: zodResolver(schema), defaultValues: PADRAO });
   const valorTexto = form.watch("valor");
-  const valorParse = parseMoney(valorTexto ?? "");
+  const valorParse = parseMoneySum(valorTexto ?? "");
 
   useEffect(() => {
     if (aberto) {
@@ -85,7 +86,7 @@ export function NovaCompraDialog({ aberto, onAbertoChange, clientePredefinido }:
 
   async function confirmar() {
     if (!revisao || !cliente) return;
-    const parsed = parseMoney(revisao.valor);
+    const parsed = parseMoneySum(revisao.valor);
     if (!parsed.ok) return;
     const janelaComprovante = prepararComprovante();
     const r = await enviar<ResultadoCompra>("/api/compras", {
@@ -152,7 +153,7 @@ export function NovaCompraDialog({ aberto, onAbertoChange, clientePredefinido }:
 
             <div>
               <Label htmlFor="compra-descricao" className="mb-1.5 block">Descrição</Label>
-              <Input
+              <Textarea
                 id="compra-descricao"
                 placeholder="Ex.: Ração 10kg, banho e tosa"
                 autoComplete="off"
@@ -169,7 +170,7 @@ export function NovaCompraDialog({ aberto, onAbertoChange, clientePredefinido }:
               <Input
                 id="compra-valor"
                 inputMode="decimal"
-                placeholder="0,00"
+                placeholder="Ex.: 10 + 15 + 3"
                 autoComplete="off"
                 aria-invalid={!!form.formState.errors.valor}
                 {...form.register("valor")}
@@ -195,7 +196,7 @@ export function NovaCompraDialog({ aberto, onAbertoChange, clientePredefinido }:
               </Linha>
               <Linha rotulo="Descrição">{revisao.descricao}</Linha>
               <Linha rotulo="Valor">
-                <span className="tabular text-base">{parseMoney(revisao.valor).ok ? formatMoney((parseMoney(revisao.valor) as { centavos: number }).centavos) : ""}</span>
+                <span className="tabular text-base">{parseMoneySum(revisao.valor).ok ? formatMoney((parseMoneySum(revisao.valor) as { centavos: number }).centavos) : ""}</span>
               </Linha>
               <Linha rotulo="Data e hora">{dataHoje()} (automática)</Linha>
             </dl>

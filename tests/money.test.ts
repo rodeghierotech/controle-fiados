@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centavosParaTexto, formatMoney, parseMoney } from "@/lib/money";
+import { centavosParaTexto, formatMoney, parseMoney, parseMoneySum } from "@/lib/money";
 
 const ok = (s: string) => {
   const r = parseMoney(s);
@@ -42,5 +42,18 @@ describe("parseMoney", () => {
     expect(formatMoney(123456).replace(/\s/g, " ")).toBe("R$ 1.234,56");
     expect(centavosParaTexto(1250)).toBe("12,50");
     expect(centavosParaTexto(5)).toBe("0,05");
+  });
+});
+
+describe("parseMoneySum", () => {
+  it("soma valores válidos em centavos", () => {
+    expect(parseMoneySum("10 + 15 + 3")).toEqual({ ok: true, centavos: 2800 });
+    expect(parseMoneySum("10,50 + R$ 2,25")).toEqual({ ok: true, centavos: 1275 });
+  });
+
+  it("rejeita parcelas vazias ou inválidas", () => {
+    expect(parseMoneySum("10 +").ok).toBe(false);
+    expect(parseMoneySum("+ 10").ok).toBe(false);
+    expect(parseMoneySum("10 ++ 3").ok).toBe(false);
   });
 });
